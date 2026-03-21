@@ -53,9 +53,16 @@
     <div class="w-full max-w-md h-full flex flex-col relative bg-ios-bg shadow-2xl overflow-hidden">
         
         <!-- 顶部标题 -->
-        <header class="pt-12 pb-4 px-6 bg-ios-bg bg-opacity-80 backdrop-blur-md sticky top-0 z-10">
-            <h1 class="text-3xl font-bold tracking-tight">时间记录</h1>
-            <p id="date-display" class="text-ios-gray text-sm mt-1 font-medium"></p>
+        <header class="pt-12 pb-4 px-6 bg-ios-bg bg-opacity-80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">时间记录</h1>
+                <p id="date-display" class="text-ios-gray text-sm mt-1 font-medium"></p>
+            </div>
+            <button onclick="openExportModal()" class="p-2 -mr-2 text-ios-blue active:opacity-50 transition-opacity" title="导出数据">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+            </button>
         </header>
 
         <!-- 核心交互区 -->
@@ -119,6 +126,19 @@
                     <button onclick="closeModal()" class="flex-1 py-3 text-ios-blue font-normal border-r border-ios-grayLight active:bg-ios-bg">取消</button>
                     <button onclick="startTask()" class="flex-1 py-3 text-ios-blue font-semibold active:bg-ios-bg">确定</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- 导出动作面板 (Action Sheet) -->
+        <div id="export-modal" class="fixed inset-0 z-50 flex items-end justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm" onclick="closeExportModal()"></div>
+            <div class="bg-ios-bg w-full max-w-md rounded-t-3xl flex flex-col overflow-hidden transform translate-y-full transition-transform duration-300 px-4 pb-8 pt-2" id="export-content">
+                <div class="w-12 h-1.5 bg-ios-grayLight rounded-full mx-auto mb-4"></div>
+                <div class="bg-white rounded-2xl overflow-hidden mb-2">
+                    <button onclick="exportJSON('week')" class="w-full py-4 text-ios-blue text-lg border-b border-ios-grayLight active:bg-ios-grayLight transition-colors">导出本周数据 (JSON)</button>
+                    <button onclick="exportJSON('month')" class="w-full py-4 text-ios-blue text-lg active:bg-ios-grayLight transition-colors">导出本月数据 (JSON)</button>
+                </div>
+                <button onclick="closeExportModal()" class="w-full bg-white rounded-2xl py-4 text-ios-blue text-lg font-semibold active:bg-ios-grayLight transition-colors">取消</button>
             </div>
         </div>
 
@@ -284,6 +304,56 @@
             const content = document.getElementById('modal-content');
             modal.classList.add('opacity-0', 'pointer-events-none');
             content.classList.add('scale-95');
+        }
+
+        // --- 导出逻辑 ---
+        function openExportModal() {
+            const modal = document.getElementById('export-modal');
+            const content = document.getElementById('export-content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('translate-y-full');
+        }
+
+        function closeExportModal() {
+            const modal = document.getElementById('export-modal');
+            const content = document.getElementById('export-content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('translate-y-full');
+        }
+
+        function exportJSON(period) {
+            const now = new Date();
+            let startOfPeriod;
+            let filename = '';
+
+            if (period === 'week') {
+                // 过去7天
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
+                filename = `TimeRecords_Week_${now.toISOString().split('T')[0]}.json`;
+            } else if (period === 'month') {
+                // 过去30天
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
+                filename = `TimeRecords_Month_${now.toISOString().split('T')[0]}.json`;
+            }
+
+            const filteredRecords = state.records
+                .filter(r => r.startTime >= startOfPeriod)
+                .sort((a, b) => b.startTime - a.startTime); // 倒序排列
+
+            // 生成 JSON 文件并下载
+            const dataStr = JSON.stringify(filteredRecords, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            closeExportModal();
         }
 
         // --- 数据展示与过滤 ---

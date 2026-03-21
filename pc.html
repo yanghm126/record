@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>时间记录</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ios: {
+                            bg: '#F2F2F7',
+                            card: '#FFFFFF',
+                            blue: '#007AFF',
+                            red: '#FF3B30',
+                            gray: '#8E8E93',
+                            grayLight: '#E5E5EA',
+                            text: '#000000',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+            background-color: #F2F2F7;
+        }
+        /* 隐藏滚动条但保留滚动功能 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* 弹窗毛玻璃 */
+        .backdrop-blur-md {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+    </style>
+</head>
+<body class="text-ios-text font-sans antialiased h-screen overflow-hidden flex justify-center">
+
+    <!-- 移动端主容器 -->
+    <div class="w-full max-w-md h-full flex flex-col relative bg-ios-bg shadow-2xl overflow-hidden">
+        
+        <!-- 顶部标题 -->
+        <header class="pt-12 pb-4 px-6 bg-ios-bg bg-opacity-80 backdrop-blur-md sticky top-0 z-10">
+            <h1 class="text-3xl font-bold tracking-tight">时间记录</h1>
+            <p id="date-display" class="text-ios-gray text-sm mt-1 font-medium"></p>
+        </header>
+
+        <!-- 核心交互区 -->
+        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 px-4">
+            
+            <!-- 状态卡片及操作按钮 -->
+            <div class="bg-ios-card rounded-3xl p-8 shadow-sm mb-6 flex flex-col items-center justify-center min-h-[220px] transition-all duration-300">
+                
+                <div id="current-task-display" class="hidden flex-col items-center mb-6 w-full">
+                    <span id="current-task-name" class="text-lg font-semibold text-ios-text mb-2 text-center break-words max-w-full"></span>
+                    <span id="timer-display" class="text-5xl font-light tracking-wider font-mono text-ios-blue">00:00:00</span>
+                </div>
+
+                <!-- 开始/结束 按钮 -->
+                <button id="main-btn" onclick="handleMainAction()" class="relative group outline-none">
+                    <div id="btn-bg" class="w-24 h-24 rounded-full bg-ios-blue flex items-center justify-center shadow-lg transition-all duration-300 active:scale-90">
+                        <!-- 播放图标 (开始) -->
+                        <svg id="icon-start" class="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z"/>
+                        </svg>
+                        <!-- 停止图标 (结束) - 默认隐藏 -->
+                        <svg id="icon-stop" class="w-8 h-8 text-white hidden" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M6 6h12v12H6z"/>
+                        </svg>
+                    </div>
+                </button>
+                <p id="main-btn-label" class="mt-4 text-ios-gray font-medium tracking-wide">点击开始</p>
+            </div>
+
+            <!-- 数据统计区 -->
+            <div class="mb-4">
+                <!-- iOS 风格分段控制器 -->
+                <div class="bg-ios-grayLight p-1 rounded-lg flex text-sm font-medium mb-4 relative">
+                    <button onclick="switchTab('today')" id="tab-today" class="flex-1 py-1.5 rounded-md text-center z-10 transition-colors text-black bg-white shadow-sm">今天</button>
+                    <button onclick="switchTab('week')" id="tab-week" class="flex-1 py-1.5 rounded-md text-center z-10 transition-colors text-ios-gray">本周</button>
+                    <button onclick="switchTab('month')" id="tab-month" class="flex-1 py-1.5 rounded-md text-center z-10 transition-colors text-ios-gray">本月</button>
+                </div>
+
+                <div class="flex justify-between items-end mb-2 px-2">
+                    <h2 class="text-xl font-bold">活动记录</h2>
+                    <span id="total-time" class="text-sm font-semibold text-ios-gray">总计: 0h 0m</span>
+                </div>
+
+                <!-- 记录列表 -->
+                <div id="records-list" class="space-y-3 pb-8">
+                    <!-- 动态注入列表项 -->
+                </div>
+            </div>
+        </main>
+
+        <!-- 自定义 iOS 风格输入弹窗 -->
+        <div id="input-modal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm" onclick="closeModal()"></div>
+            <div class="bg-ios-card w-72 rounded-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-content">
+                <div class="p-5 pb-4 text-center">
+                    <h3 class="text-lg font-semibold mb-1">开始新活动</h3>
+                    <p class="text-xs text-ios-gray mb-4">你要记录什么事情？</p>
+                    <input type="text" id="task-input" placeholder="例如：阅读、开会、写代码" class="w-full bg-ios-bg border border-ios-grayLight rounded-lg px-3 py-2 text-sm outline-none focus:border-ios-blue transition-colors">
+                </div>
+                <div class="flex border-t border-ios-grayLight">
+                    <button onclick="closeModal()" class="flex-1 py-3 text-ios-blue font-normal border-r border-ios-grayLight active:bg-ios-bg">取消</button>
+                    <button onclick="startTask()" class="flex-1 py-3 text-ios-blue font-semibold active:bg-ios-bg">确定</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- 状态管理 ---
+        const STORAGE_KEY = 'apple_time_tracker_data';
+        let state = {
+            currentTask: null, // { name: string, startTime: number }
+            records: []        // { id: number, name: string, startTime: number, endTime: number, duration: number }
+        };
+        let timerInterval = null;
+        let currentTab = 'today';
+
+        // --- 初始化 ---
+        function init() {
+            // 设置今天日期显示
+            const options = { month: 'long', day: 'numeric', weekday: 'long' };
+            document.getElementById('date-display').innerText = new Date().toLocaleDateString('zh-CN', options);
+
+            // 加载本地数据
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    state = JSON.parse(saved);
+                } catch (e) {
+                    console.error("解析本地数据失败", e);
+                }
+            }
+
+            // 如果有正在进行的任务，恢复计时 UI
+            if (state.currentTask) {
+                setUIState('active');
+                startTimerDisplay();
+            } else {
+                setUIState('idle');
+            }
+
+            renderRecords();
+        }
+
+        // --- 核心逻辑 ---
+        function handleMainAction() {
+            if (state.currentTask) {
+                // 结束任务
+                stopTask();
+            } else {
+                // 准备开始任务，弹窗输入
+                openModal();
+            }
+        }
+
+        function startTask() {
+            const input = document.getElementById('task-input');
+            const taskName = input.value.trim() || '未命名活动';
+            
+            state.currentTask = {
+                name: taskName,
+                startTime: Date.now()
+            };
+            
+            saveData();
+            closeModal();
+            input.value = ''; // 清空输入框
+            
+            setUIState('active');
+            startTimerDisplay();
+        }
+
+        function stopTask() {
+            if (!state.currentTask) return;
+
+            const endTime = Date.now();
+            const duration = endTime - state.currentTask.startTime;
+
+            // 过滤掉小于 1 分钟（60000毫秒）的误触记录（可选逻辑，目前保留所有哪怕几秒的，为了演示效果更好，这里只过滤小于1秒的）
+            if (duration > 1000) {
+                state.records.push({
+                    id: Date.now(),
+                    name: state.currentTask.name,
+                    startTime: state.currentTask.startTime,
+                    endTime: endTime,
+                    duration: duration
+                });
+            }
+
+            state.currentTask = null;
+            saveData();
+            
+            stopTimerDisplay();
+            setUIState('idle');
+            renderRecords();
+        }
+
+        // --- UI 更新与交互 ---
+        function setUIState(mode) {
+            const btnBg = document.getElementById('btn-bg');
+            const iconStart = document.getElementById('icon-start');
+            const iconStop = document.getElementById('icon-stop');
+            const label = document.getElementById('main-btn-label');
+            const displayArea = document.getElementById('current-task-display');
+            const taskNameEl = document.getElementById('current-task-name');
+
+            if (mode === 'active') {
+                btnBg.classList.replace('bg-ios-blue', 'bg-ios-red');
+                btnBg.classList.replace('w-24', 'w-20'); // 稍微变小一点变成停止按钮
+                btnBg.classList.replace('h-24', 'h-20');
+                btnBg.classList.replace('rounded-full', 'rounded-2xl');
+                
+                iconStart.classList.add('hidden');
+                iconStop.classList.remove('hidden');
+                label.innerText = '点击结束';
+                
+                taskNameEl.innerText = state.currentTask.name + " 中...";
+                displayArea.classList.remove('hidden');
+                displayArea.classList.add('flex');
+            } else {
+                btnBg.classList.replace('bg-ios-red', 'bg-ios-blue');
+                btnBg.classList.replace('w-20', 'w-24');
+                btnBg.classList.replace('h-20', 'h-24');
+                btnBg.classList.replace('rounded-2xl', 'rounded-full');
+                
+                iconStop.classList.add('hidden');
+                iconStart.classList.remove('hidden');
+                label.innerText = '点击开始';
+                
+                displayArea.classList.add('hidden');
+                displayArea.classList.remove('flex');
+                document.getElementById('timer-display').innerText = '00:00:00';
+            }
+        }
+
+        function startTimerDisplay() {
+            updateTimerDisplay(); // 立即更新一次
+            timerInterval = setInterval(updateTimerDisplay, 1000);
+        }
+
+        function stopTimerDisplay() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+
+        function updateTimerDisplay() {
+            if (!state.currentTask) return;
+            const elapsed = Date.now() - state.currentTask.startTime;
+            document.getElementById('timer-display').innerText = formatDurationStrict(elapsed);
+        }
+
+        // --- 弹窗逻辑 ---
+        function openModal() {
+            const modal = document.getElementById('input-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+            setTimeout(() => document.getElementById('task-input').focus(), 50);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('input-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('scale-95');
+        }
+
+        // --- 数据展示与过滤 ---
+        function switchTab(tab) {
+            currentTab = tab;
+            // 更新 UI 状态
+            ['today', 'week', 'month'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    el.classList.add('bg-white', 'shadow-sm', 'text-black');
+                    el.classList.remove('text-ios-gray');
+                } else {
+                    el.classList.remove('bg-white', 'shadow-sm', 'text-black');
+                    el.classList.add('text-ios-gray');
+                }
+            });
+            renderRecords();
+        }
+
+        function renderRecords() {
+            const listEl = document.getElementById('records-list');
+            listEl.innerHTML = '';
+
+            const now = new Date();
+            let startOfPeriod;
+
+            if (currentTab === 'today') {
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+            } else if (currentTab === 'week') {
+                // 过去7天
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
+            } else if (currentTab === 'month') {
+                // 过去30天
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
+            }
+
+            const filteredRecords = state.records
+                .filter(r => r.startTime >= startOfPeriod)
+                .sort((a, b) => b.startTime - a.startTime); // 倒序排列
+
+            let totalDuration = 0;
+
+            if (filteredRecords.length === 0) {
+                listEl.innerHTML = `
+                    <div class="text-center py-8 text-ios-gray text-sm">
+                        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        该时段暂无记录
+                    </div>`;
+            } else {
+                filteredRecords.forEach(record => {
+                    totalDuration += record.duration;
+                    const startTimeStr = new Date(record.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+                    const dateStr = currentTab !== 'today' ? `<span class="text-xs text-ios-gray mr-2">${new Date(record.startTime).toLocaleDateString('zh-CN', {month:'short', day:'numeric'})}</span>` : '';
+                    
+                    const el = document.createElement('div');
+                    el.className = 'bg-ios-card p-4 rounded-xl shadow-sm flex justify-between items-center';
+                    el.innerHTML = `
+                        <div class="flex flex-col overflow-hidden pr-2">
+                            <span class="font-semibold text-ios-text truncate">${record.name}</span>
+                            <div class="flex items-center mt-1">
+                                ${dateStr}
+                                <span class="text-xs text-ios-gray">${startTimeStr} 开始</span>
+                            </div>
+                        </div>
+                        <div class="text-right whitespace-nowrap">
+                            <span class="text-lg font-bold text-ios-blue">${formatDurationFriendly(record.duration)}</span>
+                        </div>
+                    `;
+                    listEl.appendChild(el);
+                });
+            }
+
+            document.getElementById('total-time').innerText = `总计: ${formatDurationFriendly(totalDuration)}`;
+        }
+
+        // --- 工具函数 ---
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        // 格式化为 00:00:00 (用于时钟)
+        function formatDurationStrict(ms) {
+            let totalSeconds = Math.floor(ms / 1000);
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = totalSeconds % 60;
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // 格式化为 1h 23m (用于列表和总计)
+        function formatDurationFriendly(ms) {
+            let totalMinutes = Math.floor(ms / 60000);
+            if (totalMinutes === 0) return '< 1m';
+            let hours = Math.floor(totalMinutes / 60);
+            let minutes = totalMinutes % 60;
+            
+            if (hours > 0) {
+                return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
+            }
+            return `${minutes}m`;
+        }
+
+        // 监听回车键提交弹窗
+        document.getElementById('task-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                startTask();
+            }
+        });
+
+        // 启动应用
+        init();
+    </script>
+</body>
+</html>

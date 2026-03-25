@@ -2,469 +2,491 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>时间记录</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>造神计划 - iOS 风格看板</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        ios: {
-                            bg: '#F2F2F7',
-                            card: '#FFFFFF',
-                            blue: '#007AFF',
-                            red: '#FF3B30',
-                            gray: '#8E8E93',
-                            grayLight: '#E5E5EA',
-                            text: '#000000',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Text"', '"Segoe UI"', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        body {
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif; 
             -webkit-tap-highlight-color: transparent;
-            background-color: #F2F2F7;
+            -webkit-font-smoothing: antialiased;
+            background-color: #000; 
         }
-        /* 隐藏滚动条但保留滚动功能 */
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
+        ::-webkit-scrollbar { display: none; }
+        * { scrollbar-width: none; }
+        .smooth-enter { animation: iosFadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @keyframes iosFadeIn {
+            from { opacity: 0; transform: translateY(8px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+        .ios-blur {
+            background-color: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
-        /* 弹窗毛玻璃 */
-        .backdrop-blur-md {
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-        }
+        /* Toast 提示动画 */
+        .toast-enter { animation: toastFadeIn 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        .toast-exit { animation: toastFadeOut 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+        @keyframes toastFadeIn { from { opacity: 0; transform: translate(-50%, 20px) scale(0.9); } to { opacity: 1; transform: translate(-50%, 0) scale(1); } }
+        @keyframes toastFadeOut { from { opacity: 1; transform: translate(-50%, 0) scale(1); } to { opacity: 0; transform: translate(-50%, -20px) scale(0.9); } }
     </style>
 </head>
-<body class="text-ios-text font-sans antialiased h-screen overflow-hidden flex justify-center">
+<body class="sm:p-8 text-black flex justify-center items-center min-h-screen">
 
-    <!-- 移动端主容器 -->
-    <div class="w-full max-w-md h-full flex flex-col relative bg-ios-bg shadow-2xl overflow-hidden">
+    <div id="app-container" class="w-full max-w-md bg-[#F2F2F7] h-screen sm:h-[850px] sm:max-h-[95vh] sm:rounded-[3rem] shadow-2xl overflow-hidden relative flex flex-col sm:border-[12px] sm:border-[#1C1C1E]">
         
-        <!-- 顶部标题 -->
-        <header class="pt-12 pb-4 px-6 bg-ios-bg bg-opacity-80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-start">
-            <div>
-                <h1 class="text-3xl font-bold tracking-tight">时间记录</h1>
-                <p id="date-display" class="text-ios-gray text-sm mt-1 font-medium"></p>
+        <header class="pt-safe px-6 pt-6 pb-2 bg-[#F2F2F7] z-40 sticky top-0">
+            <div class="flex items-center justify-between mb-1">
+                <div class="flex items-center gap-2 text-[#007AFF]">
+                    <button id="prevDateBtn" class="p-1 -ml-1 active:opacity-50 transition-opacity bg-[#007AFF]/10 rounded-full">
+                        <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                    </button>
+                    <span id="currentDateDisplay" class="text-[13px] font-semibold tracking-wide w-[100px] text-center text-[#8E8E93]"></span>
+                    <button id="nextDateBtn" class="p-1 -mr-1 active:opacity-50 transition-opacity bg-[#007AFF]/10 rounded-full">
+                        <i data-lucide="chevron-right" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                <div class="flex gap-2 items-center">
+                    <button id="todayBtn" class="hidden text-[12px] font-semibold bg-[#007AFF] text-white px-3 py-1 rounded-full active:opacity-70 transition-opacity shadow-sm">
+                        回到今天
+                    </button>
+                </div>
             </div>
-            <button onclick="openExportModal()" class="p-2 -mr-2 text-ios-blue active:opacity-50 transition-opacity" title="导出数据">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                </svg>
-            </button>
+            <h1 class="text-[34px] font-bold tracking-tight text-black leading-tight mt-1">
+                造神计划
+            </h1>
         </header>
 
-        <!-- 核心交互区 -->
-        <main class="flex-1 overflow-y-auto no-scrollbar pb-24 px-4">
-            
-            <!-- 状态卡片及操作按钮 -->
-            <div class="bg-ios-card rounded-3xl p-8 shadow-sm mb-6 flex flex-col items-center justify-center min-h-[220px] transition-all duration-300">
-                
-                <div id="current-task-display" class="hidden flex-col items-center mb-6 w-full">
-                    <span id="current-task-name" class="text-lg font-semibold text-ios-text mb-2 text-center break-words max-w-full"></span>
-                    <span id="timer-display" class="text-5xl font-light tracking-wider font-mono text-ios-blue">00:00:00</span>
-                </div>
-
-                <!-- 开始/结束 按钮 -->
-                <button id="main-btn" onclick="handleMainAction()" class="relative group outline-none">
-                    <div id="btn-bg" class="w-24 h-24 rounded-full bg-ios-blue flex items-center justify-center shadow-lg transition-all duration-300 active:scale-90">
-                        <!-- 播放图标 (开始) -->
-                        <svg id="icon-start" class="w-10 h-10 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M8 5v14l11-7z"/>
-                        </svg>
-                        <!-- 停止图标 (结束) - 默认隐藏 -->
-                        <svg id="icon-stop" class="w-8 h-8 text-white hidden" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M6 6h12v12H6z"/>
-                        </svg>
+        <div id="view-home" class="flex-1 overflow-y-auto px-4 pb-32 space-y-6">
+            <section class="mt-2">
+                <h2 class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">身份转变</h2>
+                <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04]">
+                    <div class="p-4">
+                        <textarea id="identityInput" class="w-full bg-transparent text-[17px] text-black placeholder-[#C7C7CC] outline-none resize-none font-medium" rows="2" placeholder="你想成为怎样的人..."></textarea>
                     </div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">每日微承诺</h2>
+                <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04] p-3">
+                    <form id="promiseForm" class="flex items-center gap-2 bg-[#767680]/[0.12] rounded-xl px-3 py-1 mb-2">
+                        <i data-lucide="plus-circle" class="w-5 h-5 text-[#8E8E93]"></i>
+                        <input type="text" id="newPromiseInput" placeholder="哪怕只做1个俯卧撑..." class="w-full bg-transparent py-2 text-[17px] outline-none text-black placeholder-[#8E8E93]" required>
+                    </form>
+                    <div id="promisesList" class="flex flex-col space-y-1"></div>
+                </div>
+            </section>
+
+            <section>
+                <h2 class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">习惯雷达</h2>
+                <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04]">
+                    <button id="btnStretch" class="w-full flex items-center gap-3 p-3 relative active:bg-[#E5E5EA] transition-colors">
+                        <div class="w-8 h-8 rounded-lg bg-[#FF9500] flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="figure-stand" id="iconStretch" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div class="flex-1 text-left border-b border-[#C7C7CC]/30 pb-3 pt-1">
+                            <div class="text-[17px] text-black">晨间运动</div>
+                            <div class="text-[13px] text-[#8E8E93]">拉伸加速循环，驱散脑雾</div>
+                        </div>
+                        <i data-lucide="check" class="habit-check w-5 h-5 text-[#FF9500] hidden stroke-[3] mr-2"></i>
+                    </button>
+                    <button id="btnBreathing" class="w-full flex items-center gap-3 p-3 relative active:bg-[#E5E5EA] transition-colors">
+                        <div class="w-8 h-8 rounded-lg bg-[#34C759] flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="wind" id="iconBreathing" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div class="flex-1 text-left border-b border-[#C7C7CC]/30 pb-3 pt-1">
+                            <div class="text-[17px] text-black">刻意深呼吸</div>
+                            <div class="text-[13px] text-[#8E8E93]">代替刷手机，舒缓神经</div>
+                        </div>
+                        <i data-lucide="check" class="habit-check w-5 h-5 text-[#34C759] hidden stroke-[3] mr-2"></i>
+                    </button>
+                    <button id="btnSocial" class="w-full flex items-center gap-3 p-3 relative active:bg-[#E5E5EA] transition-colors">
+                        <div class="w-8 h-8 rounded-lg bg-[#AF52DE] flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="users" id="iconSocial" class="w-5 h-5 text-white"></i>
+                        </div>
+                        <div class="flex-1 text-left pb-1 pt-1">
+                            <div class="text-[17px] text-black">高能量社交</div>
+                            <div class="text-[13px] text-[#8E8E93]">靠近有野心、上进的人</div>
+                        </div>
+                        <i data-lucide="check" class="habit-check w-5 h-5 text-[#AF52DE] hidden stroke-[3] mr-2"></i>
+                    </button>
+                </div>
+            </section>
+        </div>
+
+        <div id="view-tasks" class="flex-1 overflow-y-auto px-4 pb-32 space-y-6 hidden">
+            <div class="flex justify-end mt-2 px-2">
+                <button id="clearTasksBtn" class="text-[15px] text-[#007AFF] active:opacity-50 transition-opacity font-medium">
+                    清除已完成
                 </button>
-                <p id="main-btn-label" class="mt-4 text-ios-gray font-medium tracking-wide">点击开始</p>
             </div>
 
-            <!-- 数据统计区 -->
-            <div class="mb-4">
-                <!-- iOS 风格分段控制器 -->
-                <div class="bg-ios-grayLight p-1 rounded-lg flex text-sm font-medium mb-4 relative">
-                    <button onclick="switchTab('today')" id="tab-today" class="flex-1 py-1.5 rounded-md text-center z-10 transition-colors text-black bg-white shadow-sm">今天</button>
-                    <button onclick="switchTab('week')" id="tab-week" class="flex-1 py-1.5 rounded-md text-center z-10 transition-colors text-ios-gray">本周</button>
-                    <button onclick="switchTab('month')" id="tab-month" class="flex-1 py-1.5 rounded-md text-center z-10 transition-colors text-ios-gray">本月</button>
+            <form id="taskForm" class="bg-white rounded-2xl p-3 shadow-sm border border-black/[0.04]">
+                <div class="flex items-center gap-2 bg-[#767680]/[0.12] rounded-xl px-3 py-1 mb-3">
+                    <i data-lucide="plus-circle" class="w-5 h-5 text-[#8E8E93]"></i>
+                    <input type="text" id="newTaskInput" placeholder="添加新任务..." class="w-full bg-transparent py-2 text-[17px] outline-none text-black placeholder-[#8E8E93]" required>
                 </div>
+                <div class="flex gap-2">
+                    <select id="newTaskEnergy" class="flex-1 bg-[#767680]/[0.12] rounded-xl px-3 py-2.5 text-[15px] outline-none text-black font-medium appearance-none text-center">
+                        <option value="high">⚡ 高能量时段 (难)</option>
+                        <option value="low">☕ 低能量时段 (易)</option>
+                    </select>
+                    <button type="submit" class="bg-[#007AFF] active:bg-[#0056b3] text-white px-5 rounded-xl transition-colors font-semibold text-[15px]">
+                        添加
+                    </button>
+                </div>
+            </form>
 
-                <div class="flex justify-between items-end mb-2 px-2">
-                    <h2 class="text-xl font-bold">活动记录</h2>
-                    <span id="total-time" class="text-sm font-semibold text-ios-gray">总计: 0h 0m</span>
-                </div>
-
-                <!-- 记录列表 -->
-                <div id="records-list" class="space-y-3 pb-8">
-                    <!-- 动态注入列表项 -->
-                </div>
-            </div>
-        </main>
-
-        <!-- 自定义 iOS 风格输入弹窗 -->
-        <div id="input-modal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
-            <div class="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm" onclick="closeModal()"></div>
-            <div class="bg-ios-card w-72 rounded-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-content">
-                <div class="p-5 pb-4 text-center">
-                    <h3 class="text-lg font-semibold mb-1">开始新活动</h3>
-                    <p class="text-xs text-ios-gray mb-4">你要记录什么事情？</p>
-                    <input type="text" id="task-input" placeholder="例如：阅读、开会、写代码" class="w-full bg-ios-bg border border-ios-grayLight rounded-lg px-3 py-2 text-sm outline-none focus:border-ios-blue transition-colors">
-                </div>
-                <div class="flex border-t border-ios-grayLight">
-                    <button onclick="closeModal()" class="flex-1 py-3 text-ios-blue font-normal border-r border-ios-grayLight active:bg-ios-bg">取消</button>
-                    <button onclick="startTask()" class="flex-1 py-3 text-ios-blue font-semibold active:bg-ios-bg">确定</button>
-                </div>
+            <div class="space-y-6">
+                <section>
+                    <h2 class="text-[13px] font-semibold text-[#FF9500] uppercase tracking-wider ml-4 mb-2 flex items-center gap-1">
+                        <i data-lucide="battery-full" class="w-4 h-4"></i> 高能量时段
+                    </h2>
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04]">
+                        <div id="highEnergyList" class="flex flex-col"></div>
+                    </div>
+                </section>
+                <section>
+                    <h2 class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2 flex items-center gap-1">
+                        <i data-lucide="battery-low" class="w-4 h-4"></i> 低能量时段
+                    </h2>
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04]">
+                        <div id="lowEnergyList" class="flex flex-col"></div>
+                    </div>
+                </section>
             </div>
         </div>
 
-        <!-- 导出动作面板 (Action Sheet) -->
-        <div id="export-modal" class="fixed inset-0 z-50 flex items-end justify-center opacity-0 pointer-events-none transition-opacity duration-300">
-            <div class="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm" onclick="closeExportModal()"></div>
-            <div class="bg-ios-bg w-full max-w-md rounded-t-3xl flex flex-col overflow-hidden transform translate-y-full transition-transform duration-300 px-4 pb-8 pt-2" id="export-content">
-                <div class="w-12 h-1.5 bg-ios-grayLight rounded-full mx-auto mb-4"></div>
-                <div class="bg-white rounded-2xl overflow-hidden mb-2">
-                    <button onclick="exportJSON('week')" class="w-full py-4 text-ios-blue text-lg border-b border-ios-grayLight active:bg-ios-grayLight transition-colors">导出本周数据 (JSON)</button>
-                    <button onclick="exportJSON('month')" class="w-full py-4 text-ios-blue text-lg active:bg-ios-grayLight transition-colors">导出本月数据 (JSON)</button>
+        <div id="view-journal" class="flex-1 overflow-y-auto px-4 pb-32 space-y-6 hidden mt-2">
+            <section class="space-y-6">
+                <div>
+                    <h2 class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">📝 微小成就</h2>
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04] p-4">
+                        <textarea id="achievementInput" class="w-full bg-transparent text-[17px] text-black placeholder-[#C7C7CC] outline-none resize-none min-h-[120px]" placeholder="记录产生满满成就感..."></textarea>
+                    </div>
                 </div>
-                <button onclick="closeExportModal()" class="w-full bg-white rounded-2xl py-4 text-ios-blue text-lg font-semibold active:bg-ios-grayLight transition-colors">取消</button>
-            </div>
+                <div>
+                    <h2 class="text-[13px] font-semibold text-[#8E8E93] uppercase tracking-wider ml-4 mb-2">🎁 给自己的奖励</h2>
+                    <div class="bg-white rounded-2xl overflow-hidden shadow-sm border border-black/[0.04] p-4">
+                        <textarea id="rewardInput" class="w-full bg-transparent text-[17px] text-black placeholder-[#C7C7CC] outline-none resize-none min-h-[120px]" placeholder="及时犒劳自己！"></textarea>
+                    </div>
+                </div>
+            </section>
         </div>
+
+        <!-- Toast 提示容器 -->
+        <div id="toastContainer" class="absolute top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col items-center gap-2"></div>
+
+        <nav class="absolute bottom-0 w-full ios-blur border-t border-[#3C3C43]/20 flex justify-around px-2 pt-2 pb-safe z-50 sm:rounded-b-[2.5rem]">
+            <button class="nav-btn flex flex-col items-center gap-1 w-20 text-[#007AFF] transition-colors" data-target="home">
+                <i data-lucide="layout-dashboard" class="w-7 h-7"></i>
+                <span class="text-[10px] font-medium">看板</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center gap-1 w-20 text-[#999999] hover:text-[#8E8E93] transition-colors" data-target="tasks">
+                <i data-lucide="list-todo" class="w-7 h-7"></i>
+                <span class="text-[10px] font-medium">任务</span>
+            </button>
+            <button class="nav-btn flex flex-col items-center gap-1 w-20 text-[#999999] hover:text-[#8E8E93] transition-colors" data-target="journal">
+                <i data-lucide="gift" class="w-7 h-7"></i>
+                <span class="text-[10px] font-medium">奖励</span>
+            </button>
+        </nav>
 
     </div>
 
     <script>
-        // --- 状态管理 ---
-        const STORAGE_KEY = 'apple_time_tracker_data';
-        let state = {
-            currentTask: null, // { name: string, startTime: number }
-            records: []        // { id: number, name: string, startTime: number, endTime: number, duration: number }
-        };
-        let timerInterval = null;
-        let currentTab = 'today';
+        lucide.createIcons();
 
-        // --- 初始化 ---
-        function init() {
-            // 设置今天日期显示
-            const options = { month: 'long', day: 'numeric', weekday: 'long' };
-            document.getElementById('date-display').innerText = new Date().toLocaleDateString('zh-CN', options);
-
-            // 加载本地数据
-            const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved) {
-                try {
-                    state = JSON.parse(saved);
-                } catch (e) {
-                    console.error("解析本地数据失败", e);
-                }
-            }
-
-            // 如果有正在进行的任务，恢复计时 UI
-            if (state.currentTask) {
-                setUIState('active');
-                startTimerDisplay();
-            } else {
-                setUIState('idle');
-            }
-
-            renderRecords();
-        }
-
-        // --- 核心逻辑 ---
-        function handleMainAction() {
-            if (state.currentTask) {
-                // 结束任务
-                stopTask();
-            } else {
-                // 准备开始任务，弹窗输入
-                openModal();
-            }
-        }
-
-        function startTask() {
-            const input = document.getElementById('task-input');
-            const taskName = input.value.trim() || '未命名活动';
-            
-            state.currentTask = {
-                name: taskName,
-                startTime: Date.now()
-            };
-            
-            saveData();
-            closeModal();
-            input.value = ''; // 清空输入框
-            
-            setUIState('active');
-            startTimerDisplay();
-        }
-
-        function stopTask() {
-            if (!state.currentTask) return;
-
-            const endTime = Date.now();
-            const duration = endTime - state.currentTask.startTime;
-
-            // 过滤掉小于 1 分钟（60000毫秒）的误触记录（可选逻辑，目前保留所有哪怕几秒的，为了演示效果更好，这里只过滤小于1秒的）
-            if (duration > 1000) {
-                state.records.push({
-                    id: Date.now(),
-                    name: state.currentTask.name,
-                    startTime: state.currentTask.startTime,
-                    endTime: endTime,
-                    duration: duration
-                });
-            }
-
-            state.currentTask = null;
-            saveData();
-            
-            stopTimerDisplay();
-            setUIState('idle');
-            renderRecords();
-        }
-
-        // --- UI 更新与交互 ---
-        function setUIState(mode) {
-            const btnBg = document.getElementById('btn-bg');
-            const iconStart = document.getElementById('icon-start');
-            const iconStop = document.getElementById('icon-stop');
-            const label = document.getElementById('main-btn-label');
-            const displayArea = document.getElementById('current-task-display');
-            const taskNameEl = document.getElementById('current-task-name');
-
-            if (mode === 'active') {
-                btnBg.classList.replace('bg-ios-blue', 'bg-ios-red');
-                btnBg.classList.replace('w-24', 'w-20'); // 稍微变小一点变成停止按钮
-                btnBg.classList.replace('h-24', 'h-20');
-                btnBg.classList.replace('rounded-full', 'rounded-2xl');
-                
-                iconStart.classList.add('hidden');
-                iconStop.classList.remove('hidden');
-                label.innerText = '点击结束';
-                
-                taskNameEl.innerText = state.currentTask.name + " 中...";
-                displayArea.classList.remove('hidden');
-                displayArea.classList.add('flex');
-            } else {
-                btnBg.classList.replace('bg-ios-red', 'bg-ios-blue');
-                btnBg.classList.replace('w-20', 'w-24');
-                btnBg.classList.replace('h-20', 'h-24');
-                btnBg.classList.replace('rounded-2xl', 'rounded-full');
-                
-                iconStop.classList.add('hidden');
-                iconStart.classList.remove('hidden');
-                label.innerText = '点击开始';
-                
-                displayArea.classList.add('hidden');
-                displayArea.classList.remove('flex');
-                document.getElementById('timer-display').innerText = '00:00:00';
-            }
-        }
-
-        function startTimerDisplay() {
-            updateTimerDisplay(); // 立即更新一次
-            timerInterval = setInterval(updateTimerDisplay, 1000);
-        }
-
-        function stopTimerDisplay() {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-        }
-
-        function updateTimerDisplay() {
-            if (!state.currentTask) return;
-            const elapsed = Date.now() - state.currentTask.startTime;
-            document.getElementById('timer-display').innerText = formatDurationStrict(elapsed);
-        }
-
-        // --- 弹窗逻辑 ---
-        function openModal() {
-            const modal = document.getElementById('input-modal');
-            const content = document.getElementById('modal-content');
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            content.classList.remove('scale-95');
-            setTimeout(() => document.getElementById('task-input').focus(), 50);
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('input-modal');
-            const content = document.getElementById('modal-content');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            content.classList.add('scale-95');
-        }
-
-        // --- 导出逻辑 ---
-        function openExportModal() {
-            const modal = document.getElementById('export-modal');
-            const content = document.getElementById('export-content');
-            modal.classList.remove('opacity-0', 'pointer-events-none');
-            content.classList.remove('translate-y-full');
-        }
-
-        function closeExportModal() {
-            const modal = document.getElementById('export-modal');
-            const content = document.getElementById('export-content');
-            modal.classList.add('opacity-0', 'pointer-events-none');
-            content.classList.add('translate-y-full');
-        }
-
-        function exportJSON(period) {
-            const now = new Date();
-            let startOfPeriod;
-            let filename = '';
-
-            if (period === 'week') {
-                // 过去7天
-                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
-                filename = `TimeRecords_Week_${now.toISOString().split('T')[0]}.json`;
-            } else if (period === 'month') {
-                // 过去30天
-                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
-                filename = `TimeRecords_Month_${now.toISOString().split('T')[0]}.json`;
-            }
-
-            const filteredRecords = state.records
-                .filter(r => r.startTime >= startOfPeriod)
-                .sort((a, b) => b.startTime - a.startTime); // 倒序排列
-
-            // 生成 JSON 文件并下载
-            const dataStr = JSON.stringify(filteredRecords, null, 2);
-            const blob = new Blob([dataStr], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            closeExportModal();
-        }
-
-        // --- 数据展示与过滤 ---
-        function switchTab(tab) {
-            currentTab = tab;
-            // 更新 UI 状态
-            ['today', 'week', 'month'].forEach(t => {
-                const el = document.getElementById(`tab-${t}`);
-                if (t === tab) {
-                    el.classList.add('bg-white', 'shadow-sm', 'text-black');
-                    el.classList.remove('text-ios-gray');
-                } else {
-                    el.classList.remove('bg-white', 'shadow-sm', 'text-black');
-                    el.classList.add('text-ios-gray');
-                }
+        // 导航切换
+        const navBtns = document.querySelectorAll('.nav-btn');
+        const views = ['home', 'tasks', 'journal'];
+        navBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.target;
+                navBtns.forEach(b => { b.classList.remove('text-[#007AFF]'); b.classList.add('text-[#999999]'); });
+                btn.classList.add('text-[#007AFF]'); btn.classList.remove('text-[#999999]');
+                views.forEach(v => document.getElementById(`view-${v}`).classList.add('hidden'));
+                const targetView = document.getElementById(`view-${target}`);
+                targetView.classList.remove('hidden');
+                targetView.classList.add('smooth-enter');
+                setTimeout(() => targetView.classList.remove('smooth-enter'), 300);
             });
-            renderRecords();
-        }
-
-        function renderRecords() {
-            const listEl = document.getElementById('records-list');
-            listEl.innerHTML = '';
-
-            const now = new Date();
-            let startOfPeriod;
-
-            if (currentTab === 'today') {
-                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-            } else if (currentTab === 'week') {
-                // 过去7天
-                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
-            } else if (currentTab === 'month') {
-                // 过去30天
-                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
-            }
-
-            const filteredRecords = state.records
-                .filter(r => r.startTime >= startOfPeriod)
-                .sort((a, b) => b.startTime - a.startTime); // 倒序排列
-
-            let totalDuration = 0;
-
-            if (filteredRecords.length === 0) {
-                listEl.innerHTML = `
-                    <div class="text-center py-8 text-ios-gray text-sm">
-                        <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        该时段暂无记录
-                    </div>`;
-            } else {
-                filteredRecords.forEach(record => {
-                    totalDuration += record.duration;
-                    const startTimeStr = new Date(record.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-                    const dateStr = currentTab !== 'today' ? `<span class="text-xs text-ios-gray mr-2">${new Date(record.startTime).toLocaleDateString('zh-CN', {month:'short', day:'numeric'})}</span>` : '';
-                    
-                    const el = document.createElement('div');
-                    el.className = 'bg-ios-card p-4 rounded-xl shadow-sm flex justify-between items-center';
-                    el.innerHTML = `
-                        <div class="flex flex-col overflow-hidden pr-2">
-                            <span class="font-semibold text-ios-text truncate">${record.name}</span>
-                            <div class="flex items-center mt-1">
-                                ${dateStr}
-                                <span class="text-xs text-ios-gray">${startTimeStr} 开始</span>
-                            </div>
-                        </div>
-                        <div class="text-right whitespace-nowrap">
-                            <span class="text-lg font-bold text-ios-blue">${formatDurationFriendly(record.duration)}</span>
-                        </div>
-                    `;
-                    listEl.appendChild(el);
-                });
-            }
-
-            document.getElementById('total-time').innerText = `总计: ${formatDurationFriendly(totalDuration)}`;
-        }
-
-        // --- 工具函数 ---
-        function saveData() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        }
-
-        // 格式化为 00:00:00 (用于时钟)
-        function formatDurationStrict(ms) {
-            let totalSeconds = Math.floor(ms / 1000);
-            let hours = Math.floor(totalSeconds / 3600);
-            let minutes = Math.floor((totalSeconds % 3600) / 60);
-            let seconds = totalSeconds % 60;
-            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        // 格式化为 1h 23m (用于列表和总计)
-        function formatDurationFriendly(ms) {
-            let totalMinutes = Math.floor(ms / 60000);
-            if (totalMinutes === 0) return '< 1m';
-            let hours = Math.floor(totalMinutes / 60);
-            let minutes = totalMinutes % 60;
-            
-            if (hours > 0) {
-                return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
-            }
-            return `${minutes}m`;
-        }
-
-        // 监听回车键提交弹窗
-        document.getElementById('task-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                startTask();
-            }
         });
 
-        // 启动应用
-        init();
+        // ================= 工具函数 (修复缺失部分) =================
+        function vibrate() {
+            if (navigator && navigator.vibrate) navigator.vibrate(40);
+        }
+
+        function showToast(message, icon = 'check-circle-2') {
+            const container = document.getElementById('toastContainer');
+            if (!container) return;
+            const toast = document.createElement('div');
+            toast.className = 'toast-enter ios-blur bg-white/95 px-4 py-2.5 rounded-full shadow-lg border border-black/[0.04] flex items-center gap-2 text-[15px] font-semibold text-black';
+            toast.innerHTML = `<i data-lucide="${icon}" class="w-5 h-5 text-[#34C759]"></i> ${message}`;
+            container.appendChild(toast);
+            lucide.createIcons({ root: toast });
+            
+            setTimeout(() => {
+                toast.classList.replace('toast-enter', 'toast-exit');
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        function autoResizeTextarea(el) {
+            if (!el) return;
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        }
+
+        // 绑定自动适应高度事件
+        document.querySelectorAll('textarea').forEach(el => {
+            el.addEventListener('input', () => autoResizeTextarea(el));
+        });
+
+
+        // ================= 日期与数据管理 =================
+        let currentViewDate = new Date(); // 当前正在查看的日期
+        
+        // 生成形如 2023-10-24 的 Key，用于 localStorage 存储
+        function getDateKey(dateObj) {
+            return `${dateObj.getFullYear()}-${dateObj.getMonth() + 1}-${dateObj.getDate()}`;
+        }
+
+        // 生成形如 "10月24日 周二" 的显示文本
+        function getDisplayDate(dateObj) {
+            return dateObj.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', weekday: 'short' });
+        }
+
+        const defaultState = {
+            identity: '', promises: [], 
+            habits: { stretch: false, breathing: false, social: false },
+            tasks: [], achievement: '', reward: ''
+        };
+        let state = JSON.parse(JSON.stringify(defaultState));
+
+        // 核心：根据日期加载数据
+        function loadDataForDate(dateObj) {
+            const key = 'godMakingPlan_' + getDateKey(dateObj);
+            const saved = localStorage.getItem(key);
+            
+            if (saved) {
+                let parsed = JSON.parse(saved);
+                // 兼容旧版本的单条微承诺数据
+                if (parsed.promise && !Array.isArray(parsed.promise)) {
+                    parsed.promises = parsed.promise.text ? [{ id: Date.now(), text: parsed.promise.text, done: parsed.promise.done }] : [];
+                    delete parsed.promise;
+                }
+                state = { ...JSON.parse(JSON.stringify(defaultState)), ...parsed };
+            } else {
+                // 向下兼容：如果是今天，且有旧版本的数据，迁移过来
+                if (getDateKey(dateObj) === getDateKey(new Date()) && localStorage.getItem('godMakingPlanIOS')) {
+                    let oldParsed = JSON.parse(localStorage.getItem('godMakingPlanIOS'));
+                    if (oldParsed.promise && !Array.isArray(oldParsed.promise)) {
+                        oldParsed.promises = oldParsed.promise.text ? [{ id: Date.now(), text: oldParsed.promise.text, done: oldParsed.promise.done }] : [];
+                        delete oldParsed.promise;
+                    }
+                    state = { ...JSON.parse(JSON.stringify(defaultState)), ...oldParsed };
+                } else {
+                    state = JSON.parse(JSON.stringify(defaultState));
+                }
+            }
+        }
+
+        // 核心：保存当前日期的数据
+        function saveData() {
+            const key = 'godMakingPlan_' + getDateKey(currentViewDate);
+            localStorage.setItem(key, JSON.stringify(state));
+        }
+
+        // ================= UI 更新逻辑 =================
+
+        const els = {
+            dateDisplay: document.getElementById('currentDateDisplay'),
+            prevBtn: document.getElementById('prevDateBtn'),
+            nextBtn: document.getElementById('nextDateBtn'),
+            todayBtn: document.getElementById('todayBtn'),
+            
+            identity: document.getElementById('identityInput'),
+            promiseForm: document.getElementById('promiseForm'),
+            newPromiseInput: document.getElementById('newPromiseInput'),
+            promisesList: document.getElementById('promisesList'),
+            highEnergyList: document.getElementById('highEnergyList'),
+            lowEnergyList: document.getElementById('lowEnergyList'),
+            achievement: document.getElementById('achievementInput'),
+            reward: document.getElementById('rewardInput'),
+            newTaskInput: document.getElementById('newTaskInput'),
+            newTaskEnergy: document.getElementById('newTaskEnergy'),
+            taskForm: document.getElementById('taskForm')
+        };
+
+        function updateDateUI() {
+            els.dateDisplay.textContent = getDisplayDate(currentViewDate);
+            const isToday = getDateKey(currentViewDate) === getDateKey(new Date());
+            
+            if (isToday) {
+                els.todayBtn.classList.add('hidden');
+                els.dateDisplay.classList.add('text-[#007AFF]');
+                els.dateDisplay.classList.remove('text-[#8E8E93]');
+            } else {
+                els.todayBtn.classList.remove('hidden');
+                els.dateDisplay.classList.remove('text-[#007AFF]');
+                els.dateDisplay.classList.add('text-[#8E8E93]');
+            }
+        }
+
+        function changeDate(offsetDays) {
+            saveData(); // 先保存当前页面的修改
+            currentViewDate.setDate(currentViewDate.getDate() + offsetDays); // 切换日期
+            loadDataForDate(currentViewDate); // 读取新日期的数据
+            updateDateUI();
+            renderAll();
+        }
+
+        els.prevBtn.addEventListener('click', () => changeDate(-1));
+        els.nextBtn.addEventListener('click', () => changeDate(1));
+        els.todayBtn.addEventListener('click', () => {
+            saveData();
+            currentViewDate = new Date();
+            loadDataForDate(currentViewDate);
+            updateDateUI();
+            renderAll();
+        });
+
+        // 数据绑定渲染
+        function renderIdentity() { els.identity.value = state.identity; setTimeout(() => autoResizeTextarea(els.identity), 10); }
+        function renderPromises() {
+            els.promisesList.innerHTML = '';
+            state.promises.forEach((p) => {
+                const circleClass = p.done ? `bg-[#007AFF] border-transparent` : 'border-[#C7C7CC] bg-transparent';
+                const div = document.createElement('div');
+                div.className = `smooth-enter flex items-center gap-3 p-2 active:bg-[#E5E5EA] transition-colors rounded-xl`;
+                div.innerHTML = `
+                    <button onclick="togglePromise(${p.id})" class="flex-shrink-0 focus:outline-none p-1 -m-1">
+                        <div class="w-6 h-6 rounded-full border-[1.5px] flex items-center justify-center ${circleClass} transition-colors">
+                            ${p.done ? `<i data-lucide="check" class="w-4 h-4 text-white stroke-[3]"></i>` : ''}
+                        </div>
+                    </button>
+                    <div class="flex-1 flex items-center justify-between py-1">
+                        <span class="text-[17px] ${p.done ? 'text-[#8E8E93] line-through' : 'text-black'}">${p.text}</span>
+                        <button onclick="deletePromise(${p.id})" class="text-[#8E8E93] hover:text-[#FF3B30] p-1 -mr-1 opacity-50 active:opacity-100 focus:outline-none"><i data-lucide="x" class="w-4 h-4"></i></button>
+                    </div>
+                `;
+                els.promisesList.appendChild(div);
+            });
+            lucide.createIcons();
+        }
+
+        function updateHabitBtn(btnId, isActive) {
+            const check = document.getElementById(btnId).querySelector('.habit-check');
+            isActive ? check.classList.remove('hidden') : check.classList.add('hidden');
+        }
+        function renderHabits() {
+            updateHabitBtn('btnStretch', state.habits.stretch);
+            updateHabitBtn('btnBreathing', state.habits.breathing);
+            updateHabitBtn('btnSocial', state.habits.social);
+        }
+
+        function renderTasks() {
+            const renderList = (tasks, container, emptyMsg, accentColor) => {
+                container.innerHTML = '';
+                if (tasks.length === 0) {
+                    container.innerHTML = `<p class="text-[15px] text-[#8E8E93] text-center py-6">${emptyMsg}</p>`;
+                    return;
+                }
+                tasks.forEach((task, index) => {
+                    const isLast = index === tasks.length - 1;
+                    const circleClass = task.done ? `bg-[${accentColor}] border-transparent` : 'border-[#C7C7CC] bg-transparent';
+                    const div = document.createElement('div');
+                    div.className = `smooth-enter flex items-center gap-3 p-3 pl-4 bg-white active:bg-[#E5E5EA] transition-colors`;
+                    div.innerHTML = `
+                        <button onclick="toggleTask(${task.id})" class="flex-shrink-0 focus:outline-none p-1 -m-1">
+                            <div class="w-[22px] h-[22px] rounded-full border-[1.5px] flex items-center justify-center ${circleClass} transition-colors">
+                                ${task.done ? `<i data-lucide="check" class="w-3.5 h-3.5 text-white stroke-[3]"></i>` : ''}
+                            </div>
+                        </button>
+                        <div class="flex-1 flex items-center justify-between ${isLast ? '' : 'border-b border-[#C7C7CC]/30'} py-1.5 min-h-[44px]">
+                            <span class="text-[17px] ${task.done ? 'text-[#8E8E93] line-through' : 'text-black'}">${task.text}</span>
+                            <button onclick="deleteTask(${task.id})" class="text-[#FF3B30] p-2 -mr-2 active:opacity-50 focus:outline-none"><i data-lucide="trash-2" class="w-5 h-5"></i></button>
+                        </div>
+                    `;
+                    container.appendChild(div);
+                });
+            };
+            renderList(state.tasks.filter(t => t.type === 'high'), els.highEnergyList, '极度自律！暂无待办', '#FF9500');
+            renderList(state.tasks.filter(t => t.type === 'low'), els.lowEnergyList, '全都搞定啦！', '#8E8E93');
+            lucide.createIcons();
+        }
+
+        function renderRewards() { 
+            els.achievement.value = state.achievement; 
+            els.reward.value = state.reward; 
+            setTimeout(() => { autoResizeTextarea(els.achievement); autoResizeTextarea(els.reward); }, 10);
+        }
+        function renderAll() { renderIdentity(); renderPromises(); renderHabits(); renderTasks(); renderRewards(); }
+
+        // 事件监听绑定
+        els.identity.addEventListener('input', (e) => { state.identity = e.target.value; saveData(); });
+        
+        els.promiseForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = els.newPromiseInput.value.trim();
+            if (!text) return;
+            state.promises.push({ id: Date.now(), text, done: false });
+            els.newPromiseInput.value = ''; els.newPromiseInput.blur();
+            saveData(); renderPromises();
+        });
+
+        window.togglePromise = function(id) {
+            const p = state.promises.find(x => x.id === id);
+            if (p) {
+                p.done = !p.done;
+                if(p.done) { vibrate(); showToast('已兑现承诺！'); }
+                saveData(); renderPromises();
+            }
+        };
+
+        window.deletePromise = function(id) {
+            state.promises = state.promises.filter(x => x.id !== id);
+            saveData(); renderPromises();
+        };
+        
+        document.getElementById('btnStretch').addEventListener('click', () => { state.habits.stretch = !state.habits.stretch; if(state.habits.stretch){ vibrate(); showToast('已完成晨间运动'); } saveData(); renderHabits(); });
+        document.getElementById('btnBreathing').addEventListener('click', () => { state.habits.breathing = !state.habits.breathing; if(state.habits.breathing){ vibrate(); showToast('已完成深呼吸'); } saveData(); renderHabits(); });
+        document.getElementById('btnSocial').addEventListener('click', () => { state.habits.social = !state.habits.social; if(state.habits.social){ vibrate(); showToast('已完成高能量社交'); } saveData(); renderHabits(); });
+
+        els.taskForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = els.newTaskInput.value.trim();
+            if (!text) return;
+            state.tasks.unshift({ id: Date.now(), text, type: els.newTaskEnergy.value, done: false });
+            els.newTaskInput.value = ''; els.newTaskInput.blur();
+            showToast('任务已添加', 'plus-circle');
+            saveData(); renderTasks();
+        });
+
+        window.toggleTask = function(id) { 
+            const task = state.tasks.find(t => t.id === id); 
+            if (task) { 
+                task.done = !task.done; 
+                if(task.done) { vibrate(); showToast(task.type === 'high' ? '攻克高能任务！⚡' : '搞定一项任务！'); }
+                saveData(); renderTasks(); 
+            } 
+        };
+        window.deleteTask = function(id) { state.tasks = state.tasks.filter(t => t.id !== id); saveData(); renderTasks(); };
+        document.getElementById('clearTasksBtn').addEventListener('click', () => { if(confirm("确定要清除所有已完成的任务吗？")) { state.tasks = state.tasks.filter(t => !t.done); showToast('已清理'); saveData(); renderTasks(); } });
+
+        els.achievement.addEventListener('input', (e) => { state.achievement = e.target.value; saveData(); });
+        els.reward.addEventListener('input', (e) => { state.reward = e.target.value; saveData(); });
+
+        // 初始化启动
+        loadDataForDate(currentViewDate);
+        updateDateUI();
+        renderAll();
     </script>
 </body>
 </html>

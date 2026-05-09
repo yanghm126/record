@@ -45,6 +45,15 @@
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
         }
+        /* 心情按钮动画 */
+        .mood-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .mood-btn.selected {
+            transform: scale(1.3);
+            filter: grayscale(0%);
+            opacity: 1;
+        }
     </style>
 </head>
 <body class="text-ios-text font-sans antialiased h-screen overflow-hidden flex justify-center">
@@ -53,9 +62,16 @@
     <div class="w-full max-w-md h-full flex flex-col relative bg-ios-bg shadow-2xl overflow-hidden">
         
         <!-- 顶部标题 -->
-        <header class="pt-12 pb-4 px-6 bg-ios-bg bg-opacity-80 backdrop-blur-md sticky top-0 z-10">
-            <h1 class="text-3xl font-bold tracking-tight">时间记录</h1>
-            <p id="date-display" class="text-ios-gray text-sm mt-1 font-medium"></p>
+        <header class="pt-12 pb-4 px-6 bg-ios-bg bg-opacity-80 backdrop-blur-md sticky top-0 z-10 flex justify-between items-start">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">时间记录</h1>
+                <p id="date-display" class="text-ios-gray text-sm mt-1 font-medium"></p>
+            </div>
+            <button onclick="openExportModal()" class="p-2 -mr-2 text-ios-blue active:opacity-50 transition-opacity" title="导出数据">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                </svg>
+            </button>
         </header>
 
         <!-- 核心交互区 -->
@@ -106,19 +122,60 @@
             </div>
         </main>
 
-        <!-- 自定义 iOS 风格输入弹窗 -->
+        <!-- 自定义 iOS 风格开始任务输入弹窗 -->
         <div id="input-modal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
             <div class="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm" onclick="closeModal()"></div>
-            <div class="bg-ios-card w-72 rounded-2xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-content">
-                <div class="p-5 pb-4 text-center">
+            <div class="bg-ios-card w-72 rounded-3xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="modal-content">
+                <div class="p-6 pb-4 text-center">
                     <h3 class="text-lg font-semibold mb-1">开始新活动</h3>
                     <p class="text-xs text-ios-gray mb-4">你要记录什么事情？</p>
-                    <input type="text" id="task-input" placeholder="例如：阅读、开会、写代码" class="w-full bg-ios-bg border border-ios-grayLight rounded-lg px-3 py-2 text-sm outline-none focus:border-ios-blue transition-colors">
+                    <input type="text" id="task-input" placeholder="例如：阅读、开会、写代码" class="w-full bg-ios-bg border border-ios-grayLight rounded-xl px-4 py-3 text-sm outline-none focus:border-ios-blue transition-colors">
                 </div>
                 <div class="flex border-t border-ios-grayLight">
-                    <button onclick="closeModal()" class="flex-1 py-3 text-ios-blue font-normal border-r border-ios-grayLight active:bg-ios-bg">取消</button>
-                    <button onclick="startTask()" class="flex-1 py-3 text-ios-blue font-semibold active:bg-ios-bg">确定</button>
+                    <button onclick="closeModal()" class="flex-1 py-3.5 text-ios-blue font-normal border-r border-ios-grayLight active:bg-ios-bg">取消</button>
+                    <button onclick="startTask()" class="flex-1 py-3.5 text-ios-blue font-semibold active:bg-ios-bg">确定</button>
                 </div>
+            </div>
+        </div>
+
+        <!-- 结束任务时的反馈弹窗 (心情与感受) -->
+        <div id="feedback-modal" class="fixed inset-0 z-[60] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+            <!-- 注意：故意取消了点击背景关闭，强制用户做选择 -->
+            <div class="absolute inset-0 bg-black bg-opacity-30 backdrop-blur-sm"></div>
+            <div class="bg-ios-card w-80 rounded-3xl flex flex-col overflow-hidden transform scale-95 transition-transform duration-300" id="feedback-content">
+                <div class="p-6 pb-5">
+                    <h3 class="text-xl font-bold mb-1 text-center text-ios-text">活动结束</h3>
+                    <p class="text-xs text-ios-gray text-center mb-6">记录一下此刻的心情和感受吧</p>
+
+                    <!-- 心情选择 (Emoji) -->
+                    <div class="flex justify-between mb-6 px-2">
+                        <button class="mood-btn text-3xl opacity-40 grayscale hover:grayscale-0 hover:opacity-100" data-mood="🤩" onclick="selectMood(this)">🤩</button>
+                        <button class="mood-btn text-3xl opacity-40 grayscale hover:grayscale-0 hover:opacity-100" data-mood="😊" onclick="selectMood(this)">😊</button>
+                        <button class="mood-btn text-3xl opacity-40 grayscale hover:grayscale-0 hover:opacity-100" data-mood="😐" onclick="selectMood(this)">😐</button>
+                        <button class="mood-btn text-3xl opacity-40 grayscale hover:grayscale-0 hover:opacity-100" data-mood="😮‍💨" onclick="selectMood(this)">😮‍💨</button>
+                        <button class="mood-btn text-3xl opacity-40 grayscale hover:grayscale-0 hover:opacity-100" data-mood="😫" onclick="selectMood(this)">😫</button>
+                    </div>
+
+                    <!-- 感受输入 -->
+                    <textarea id="feelings-input" rows="3" placeholder="写点什么体会或总结..." class="w-full bg-ios-bg border border-ios-grayLight rounded-xl px-4 py-3 text-sm outline-none focus:border-ios-blue transition-colors resize-none"></textarea>
+                </div>
+                <div class="flex border-t border-ios-grayLight">
+                    <button onclick="submitFeedback(true)" class="flex-1 py-3.5 text-ios-gray font-normal border-r border-ios-grayLight active:bg-ios-bg">跳过</button>
+                    <button onclick="submitFeedback(false)" class="flex-1 py-3.5 text-ios-blue font-semibold active:bg-ios-bg">保存记录</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 导出动作面板 (Action Sheet) -->
+        <div id="export-modal" class="fixed inset-0 z-50 flex items-end justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+            <div class="absolute inset-0 bg-black bg-opacity-20 backdrop-blur-sm" onclick="closeExportModal()"></div>
+            <div class="bg-ios-bg w-full max-w-md rounded-t-3xl flex flex-col overflow-hidden transform translate-y-full transition-transform duration-300 px-4 pb-8 pt-2" id="export-content">
+                <div class="w-12 h-1.5 bg-ios-grayLight rounded-full mx-auto mb-4"></div>
+                <div class="bg-white rounded-2xl overflow-hidden mb-2">
+                    <button onclick="exportJSON('week')" class="w-full py-4 text-ios-blue text-lg border-b border-ios-grayLight active:bg-ios-grayLight transition-colors">导出本周数据 (JSON)</button>
+                    <button onclick="exportJSON('month')" class="w-full py-4 text-ios-blue text-lg active:bg-ios-grayLight transition-colors">导出本月数据 (JSON)</button>
+                </div>
+                <button onclick="closeExportModal()" class="w-full bg-white rounded-2xl py-4 text-ios-blue text-lg font-semibold active:bg-ios-grayLight transition-colors">取消</button>
             </div>
         </div>
 
@@ -129,10 +186,14 @@
         const STORAGE_KEY = 'apple_time_tracker_data';
         let state = {
             currentTask: null, // { name: string, startTime: number }
-            records: []        // { id: number, name: string, startTime: number, endTime: number, duration: number }
+            records: []        // { id: number, name: string, startTime: number, endTime: number, duration: number, mood: string, feelings: string }
         };
         let timerInterval = null;
         let currentTab = 'today';
+        
+        // 临时存储将要保存的记录
+        let pendingRecord = null;
+        let currentSelectedMood = '';
 
         // --- 初始化 ---
         function init() {
@@ -164,7 +225,7 @@
         // --- 核心逻辑 ---
         function handleMainAction() {
             if (state.currentTask) {
-                // 结束任务
+                // 结束任务，会触发反馈弹窗
                 stopTask();
             } else {
                 // 准备开始任务，弹窗输入
@@ -195,24 +256,90 @@
             const endTime = Date.now();
             const duration = endTime - state.currentTask.startTime;
 
-            // 过滤掉小于 1 分钟（60000毫秒）的误触记录（可选逻辑，目前保留所有哪怕几秒的，为了演示效果更好，这里只过滤小于1秒的）
+            // 过滤掉小于 1 秒（1000毫秒）的误触记录
             if (duration > 1000) {
-                state.records.push({
+                // 将数据暂存，准备进行反馈
+                pendingRecord = {
                     id: Date.now(),
                     name: state.currentTask.name,
                     startTime: state.currentTask.startTime,
                     endTime: endTime,
                     duration: duration
-                });
+                };
+                
+                // 停止主界面计时，但不销毁状态，等待反馈提交
+                stopTimerDisplay();
+                setUIState('idle');
+                
+                // 打开反馈弹窗
+                openFeedbackModal();
+            } else {
+                // 时间太短，直接丢弃
+                state.currentTask = null;
+                saveData();
+                stopTimerDisplay();
+                setUIState('idle');
+            }
+        }
+
+        // --- 反馈弹窗逻辑 ---
+        function openFeedbackModal() {
+            // 重置反馈窗口状态
+            currentSelectedMood = '';
+            document.querySelectorAll('.mood-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.classList.add('opacity-40', 'grayscale');
+            });
+            document.getElementById('feelings-input').value = '';
+
+            const modal = document.getElementById('feedback-modal');
+            const content = document.getElementById('feedback-content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('scale-95');
+        }
+
+        function closeFeedbackModal() {
+            const modal = document.getElementById('feedback-modal');
+            const content = document.getElementById('feedback-content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('scale-95');
+        }
+
+        function selectMood(btn) {
+            // 清除其他按钮选中状态
+            document.querySelectorAll('.mood-btn').forEach(b => {
+                b.classList.remove('selected');
+                b.classList.add('opacity-40', 'grayscale');
+            });
+            
+            // 激活当前按钮
+            btn.classList.remove('opacity-40', 'grayscale');
+            btn.classList.add('selected');
+            
+            currentSelectedMood = btn.getAttribute('data-mood');
+        }
+
+        function submitFeedback(isSkip) {
+            if (!pendingRecord) return;
+
+            if (!isSkip) {
+                const feelingsText = document.getElementById('feelings-input').value.trim();
+                pendingRecord.mood = currentSelectedMood || null;
+                pendingRecord.feelings = feelingsText || null;
             }
 
-            state.currentTask = null;
-            saveData();
+            // 正式保存到记录数组
+            state.records.push(pendingRecord);
             
-            stopTimerDisplay();
-            setUIState('idle');
+            // 清理状态
+            state.currentTask = null;
+            pendingRecord = null;
+            
+            saveData();
             renderRecords();
+            closeFeedbackModal();
         }
+
 
         // --- UI 更新与交互 ---
         function setUIState(mode) {
@@ -286,6 +413,76 @@
             content.classList.add('scale-95');
         }
 
+        // --- 导出逻辑 ---
+        function openExportModal() {
+            const modal = document.getElementById('export-modal');
+            const content = document.getElementById('export-content');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            content.classList.remove('translate-y-full');
+        }
+
+        function closeExportModal() {
+            const modal = document.getElementById('export-modal');
+            const content = document.getElementById('export-content');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            content.classList.add('translate-y-full');
+        }
+
+        function exportJSON(period) {
+            const now = new Date();
+            let startOfPeriod;
+            let filename = '';
+
+            if (period === 'week') {
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
+                filename = `TimeRecords_Week_${now.toISOString().split('T')[0]}.json`;
+            } else if (period === 'month') {
+                startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
+                filename = `TimeRecords_Month_${now.toISOString().split('T')[0]}.json`;
+            }
+
+            const filteredRecords = state.records
+                .filter(r => r.startTime >= startOfPeriod)
+                .sort((a, b) => b.startTime - a.startTime); 
+
+            // 导出时，将 Emoji 转换为中文文本
+            const moodTextMap = {
+                '🤩': '极好',
+                '😊': '开心',
+                '😐': '平静',
+                '😮‍💨': '疲惫',
+                '😫': '糟糕'
+            };
+
+            // 在导出前对数据进行格式转换
+            const exportData = filteredRecords.map(r => {
+                const record = {
+                    id: r.id,
+                    name: r.name,
+                    startTime: formatDateForExport(r.startTime),
+                    endTime: formatDateForExport(r.endTime),
+                    duration: formatDurationForExport(r.duration)
+                };
+                if (r.mood) record.mood = moodTextMap[r.mood] || r.mood;
+                if (r.feelings) record.feelings = r.feelings;
+                return record;
+            });
+
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+
+            closeExportModal();
+        }
+
         // --- 数据展示与过滤 ---
         function switchTab(tab) {
             currentTab = tab;
@@ -313,10 +510,8 @@
             if (currentTab === 'today') {
                 startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
             } else if (currentTab === 'week') {
-                // 过去7天
                 startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6).getTime();
             } else if (currentTab === 'month') {
-                // 过去30天
                 startOfPeriod = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29).getTime();
             }
 
@@ -338,19 +533,33 @@
                     const startTimeStr = new Date(record.startTime).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
                     const dateStr = currentTab !== 'today' ? `<span class="text-xs text-ios-gray mr-2">${new Date(record.startTime).toLocaleDateString('zh-CN', {month:'short', day:'numeric'})}</span>` : '';
                     
+                    // 如果有心情和感受，渲染反馈区域
+                    let feedbackHtml = '';
+                    if (record.mood || record.feelings) {
+                        feedbackHtml = `
+                            <div class="mt-3 pt-3 border-t border-ios-grayLight/50 flex flex-col gap-1.5">
+                                ${record.mood ? `<div class="text-sm"><span class="text-ios-gray mr-1">心情:</span> ${record.mood}</div>` : ''}
+                                ${record.feelings ? `<div class="text-sm text-ios-text bg-ios-bg p-2 rounded-lg italic whitespace-pre-wrap leading-relaxed">${record.feelings}</div>` : ''}
+                            </div>
+                        `;
+                    }
+
                     const el = document.createElement('div');
-                    el.className = 'bg-ios-card p-4 rounded-xl shadow-sm flex justify-between items-center';
+                    el.className = 'bg-ios-card p-4 rounded-2xl shadow-sm flex flex-col';
                     el.innerHTML = `
-                        <div class="flex flex-col overflow-hidden pr-2">
-                            <span class="font-semibold text-ios-text truncate">${record.name}</span>
-                            <div class="flex items-center mt-1">
-                                ${dateStr}
-                                <span class="text-xs text-ios-gray">${startTimeStr} 开始</span>
+                        <div class="flex justify-between items-center">
+                            <div class="flex flex-col overflow-hidden pr-2">
+                                <span class="font-semibold text-ios-text truncate text-lg">${record.name}</span>
+                                <div class="flex items-center mt-0.5">
+                                    ${dateStr}
+                                    <span class="text-xs text-ios-gray">${startTimeStr} 开始</span>
+                                </div>
+                            </div>
+                            <div class="text-right whitespace-nowrap pl-2">
+                                <span class="text-xl font-bold text-ios-blue">${formatDurationFriendly(record.duration)}</span>
                             </div>
                         </div>
-                        <div class="text-right whitespace-nowrap">
-                            <span class="text-lg font-bold text-ios-blue">${formatDurationFriendly(record.duration)}</span>
-                        </div>
+                        ${feedbackHtml}
                     `;
                     listEl.appendChild(el);
                 });
@@ -384,6 +593,32 @@
                 return minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h`;
             }
             return `${minutes}m`;
+        }
+
+        // 导出格式化时间：例如 2026年5月9日22:52
+        function formatDateForExport(ms) {
+            const d = new Date(ms);
+            const year = d.getFullYear();
+            const month = d.getMonth() + 1;
+            const day = d.getDate();
+            const hours = d.getHours().toString().padStart(2, '0');
+            const minutes = d.getMinutes().toString().padStart(2, '0');
+            return `${year}年${month}月${day}日${hours}:${minutes}`;
+        }
+
+        // 导出格式化时长：例如 1h 1m 1s
+        function formatDurationForExport(ms) {
+            let totalSeconds = Math.floor(ms / 1000);
+            let hours = Math.floor(totalSeconds / 3600);
+            let minutes = Math.floor((totalSeconds % 3600) / 60);
+            let seconds = totalSeconds % 60;
+            
+            let res = [];
+            if (hours > 0) res.push(`${hours}h`);
+            if (minutes > 0) res.push(`${minutes}m`);
+            if (seconds > 0 || res.length === 0) res.push(`${seconds}s`);
+            
+            return res.join(' ');
         }
 
         // 监听回车键提交弹窗
